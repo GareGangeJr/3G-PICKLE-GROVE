@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BOOKING_CONFIG, BRAND_NAME } from "@/lib/config";
+import { downloadSchedulePdf } from "@/lib/schedulePdf";
 import { getZonedHours, todayKey } from "@/lib/time";
 
 type AdminSlot = {
@@ -109,6 +110,7 @@ export function AdminDashboard({ initialDates }: { initialDates: string[] }) {
   const [opDuration, setOpDuration] = useState(2);
   const [opCap, setOpCap] = useState(12);
   const [addedLateCount, setAddedLateCount] = useState(0);
+  const [toast, setToast] = useState<string | null>(null);
 
   const dateOptions = useMemo(
     () =>
@@ -187,19 +189,12 @@ export function AdminDashboard({ initialDates }: { initialDates: string[] }) {
           ? "BOOKED"
           : "OFF";
 
-    let playerName = note.trim();
-    if (nextStatus === "BOOKED") {
-      const entered = window.prompt(
-        "Who booked this hour? (name from Messenger)",
-        playerName || "",
+    const playerName = note.trim();
+    if (nextStatus === "BOOKED" && !playerName) {
+      setError(
+        "Type the player name in the box below first, then tap the hour again to mark Booked.",
       );
-      if (entered === null) return;
-      playerName = entered.trim();
-      if (!playerName) {
-        setError("Enter a player name to mark this hour as booked.");
-        return;
-      }
-      setNote(playerName);
+      return;
     }
 
     setError(null);
@@ -229,6 +224,27 @@ export function AdminDashboard({ initialDates }: { initialDates: string[] }) {
         setError(e instanceof Error ? e.message : "Update failed");
       }
     });
+  }
+
+  function downloadPdf() {
+    startTransition(async () => {
+      try {
+        await downloadSchedulePdf({ dateKey, slots, openPlay });
+      } catch {
+        setError("Could not generate PDF.");
+      }
+    });
+  }
+
+  async function copyPublicDayLink() {
+    const url = `${window.location.origin}/schedule?date=${dateKey}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setToast("Public day link copied");
+      window.setTimeout(() => setToast(null), 2000);
+    } catch {
+      setError("Could not copy link.");
+    }
   }
 
   function runDayAction(action: "open_day" | "clear_day") {
@@ -334,6 +350,7 @@ export function AdminDashboard({ initialDates }: { initialDates: string[] }) {
       </div>
 
       {error ? <p className="mt-4 text-sm text-lime">{error}</p> : null}
+      {toast ? <p className="mt-4 text-sm text-lime">{toast}</p> : null}
 
       <div className="mt-8 flex gap-2 overflow-x-auto pb-1">
         {dateOptions.map((d) => (
@@ -376,6 +393,12 @@ export function AdminDashboard({ initialDates }: { initialDates: string[] }) {
           onClick={() => setDateKey(addDaysKey(dateKey, 1))}
         >
           Next day
+        </button>
+        <button type="button" className="btn-ghost" onClick={downloadPdf}>
+          Download PDF
+        </button>
+        <button type="button" className="btn-ghost" onClick={copyPublicDayLink}>
+          Copy public link
         </button>
       </div>
 
@@ -491,7 +514,7 @@ export function AdminDashboard({ initialDates }: { initialDates: string[] }) {
 
       <div className="mt-6">
         <label className="mb-2 block text-sm uppercase tracking-[0.16em] text-muted">
-          Player name (used when booking)
+          Player name (type here before marking Booked)
         </label>
         <input
           className="field max-w-md"
@@ -500,7 +523,8 @@ export function AdminDashboard({ initialDates }: { initialDates: string[] }) {
           placeholder="e.g. Juan – Messenger"
         />
         <p className="mt-2 text-sm text-muted">
-          When you mark a slot Booked, you’ll confirm who reserved it.
+          Type the name, then tap an Open hour to mark it Booked. No popup
+          needed.
         </p>
       </div>
 

@@ -5,11 +5,19 @@ const COOKIE_NAME = "3g_admin_session";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
 function getSecret() {
-  return process.env.ADMIN_SESSION_SECRET || "dev-secret";
+  const secret = process.env.ADMIN_SESSION_SECRET;
+  if (!secret) {
+    throw new Error("ADMIN_SESSION_SECRET is not set.");
+  }
+  return secret;
 }
 
 function getAdminPassword() {
-  return process.env.ADMIN_PASSWORD || "3gpickle";
+  const password = process.env.ADMIN_PASSWORD;
+  if (!password) {
+    throw new Error("ADMIN_PASSWORD is not set.");
+  }
+  return password;
 }
 
 function sign(value: string) {

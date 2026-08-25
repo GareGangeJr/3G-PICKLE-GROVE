@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { FACEBOOK_PAGE_URL } from "@/lib/config";
 import { todayKey } from "@/lib/time";
 
@@ -32,11 +33,22 @@ type Schedule = {
   pastOpenCount?: number;
 };
 
-export function ScheduleClient({ initialDates }: { initialDates: string[] }) {
-  const [dateKey, setDateKey] = useState(initialDates[0] ?? todayKey());
+export function ScheduleClient({
+  initialDates,
+  initialDateKey,
+}: {
+  initialDates: string[];
+  initialDateKey: string;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [dateKey, setDateKey] = useState(
+    initialDateKey || initialDates[0] || todayKey(),
+  );
   const [schedule, setSchedule] = useState<Schedule | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
 
   const dateOptions = useMemo(
     () =>
@@ -54,6 +66,22 @@ export function ScheduleClient({ initialDates }: { initialDates: string[] }) {
       }),
     [initialDates],
   );
+
+  function selectDate(key: string) {
+    setDateKey(key);
+    router.replace(`${pathname}?date=${key}`, { scroll: false });
+  }
+
+  async function copyDayLink() {
+    const url = `${window.location.origin}/schedule?date=${dateKey}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError("Could not copy link.");
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -124,21 +152,26 @@ export function ScheduleClient({ initialDates }: { initialDates: string[] }) {
         </p>
       </div>
 
-      <div className="mb-6 flex gap-2 overflow-x-auto pb-1">
-        {dateOptions.map((d) => (
-          <button
-            key={d.key}
-            type="button"
-            onClick={() => setDateKey(d.key)}
-            className={`shrink-0 border px-4 py-3 uppercase tracking-[0.08em] ${
-              dateKey === d.key
-                ? "border-white bg-lime text-[#061000]"
-                : "border-line bg-transparent text-paper hover:border-lime"
-            }`}
-          >
-            {d.label}
-          </button>
-        ))}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {dateOptions.map((d) => (
+            <button
+              key={d.key}
+              type="button"
+              onClick={() => selectDate(d.key)}
+              className={`shrink-0 border px-4 py-3 uppercase tracking-[0.08em] ${
+                dateKey === d.key
+                  ? "border-white bg-lime text-[#061000]"
+                  : "border-line bg-transparent text-paper hover:border-lime"
+              }`}
+            >
+              {d.label}
+            </button>
+          ))}
+        </div>
+        <button type="button" className="btn-ghost shrink-0 text-sm" onClick={copyDayLink}>
+          {copied ? "Link copied" : "Copy day link"}
+        </button>
       </div>
 
       {loading ? (
