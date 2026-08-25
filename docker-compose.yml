@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: pickle
+      POSTGRES_PASSWORD: pickle
+      POSTGRES_DB: pickle_grove
+    volumes:
+      - pickle_pg_data:/var/lib/postgresql/data
+
+volumes:
+  pickle_pg_data:

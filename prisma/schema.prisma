@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Court {
+  id               String            @id @default(cuid())
+  name             String
+  createdAt        DateTime          @default(now())
+  slots            ScheduleSlot[]
+  openPlaySessions OpenPlaySession[]
+  bookingHistory   BookingHistory[]
+}
+
+model ScheduleSlot {
+  id        String     @id @default(cuid())
+  courtId   String
+  court     Court      @relation(fields: [courtId], references: [id])
+  startAt   DateTime
+  endAt     DateTime
+  status    SlotStatus @default(AVAILABLE)
+  note      String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([courtId, startAt])
+  @@index([status, startAt])
+}
+
+model OpenPlaySession {
+  id        String         @id @default(cuid())
+  courtId   String
+  court     Court          @relation(fields: [courtId], references: [id])
+  startAt   DateTime
+  endAt     DateTime
+  title     String         @default("Open Play")
+  playerCap Int            @default(12)
+  note      String?
+  status    OpenPlayStatus @default(OPEN)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@index([startAt, status])
+}
+
+model BookingHistory {
+  id          String   @id @default(cuid())
+  courtId     String
+  court       Court    @relation(fields: [courtId], references: [id])
+  startAt     DateTime
+  endAt       DateTime
+  kind        String
+  action      String
+  playerLabel String?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([startAt])
+}
+
+enum SlotStatus {
+  AVAILABLE
+  BOOKED
+}
+
+enum OpenPlayStatus {
+  OPEN
+  FULL
+  CANCELLED
+}
